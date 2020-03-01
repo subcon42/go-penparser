@@ -1,4 +1,4 @@
-package gopen
+package pen
 
 import (
 	"strings"
