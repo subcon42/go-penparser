@@ -21,6 +21,25 @@ var enterpriseIRI string
 var enterpriseASN1 string = `{iso(1) identified-organization(3) dod(6) internet(1) private(4) enterprise(1) <--X-->}`
 
 /*
+An emptyNode may be returned in the face of
+error or lack of search results...
+*/
+var emptyNode Node
+
+/*
+Date format constant - replace with any official time Format
+string constant, e.g: time.RFC3339, as desired, or create a
+custom one as we've done here.
+*/
+const dateFormat = `Mon Jan _2 2006`
+
+/*
+penDateFormat is the format which IANA currently uses in their
+modification timestamp for the official PEN file.
+*/
+const penDateFormat = `2006-01-02`
+
+/*
 Enterprises represents the entire (parsed) branch of
 the IANA Private Enterprise Number (PEN) List. This
 type also contains prefix OID and IRI values, as well
@@ -28,12 +47,12 @@ as parsing-related data that may be useful to admin
 responsible for handling regular refreshes.
 */
 type Enterprises struct {
-	Nodes     []Node
-	ParseTime time.Duration
-	URI       *url.URL // Source URI
+	Nodes       []Node
+	SourceURI   *url.URL
+	ParseTime   time.Duration
+	LastUpdated time.Time
 	Title,
-	Section,
-	LastUpdated string
+	Section		string
 }
 
 /*
@@ -68,8 +87,6 @@ If a match is found, the first return value is the boolean
 indicator.  The second return value indicates the storage
 index number of the Node in question as reported by the
 receiver instance of Enterprises.
-
-If a match is found, the second t
 */
 func (e Enterprises) oidExists(dec interface{}) (bool, int) {
 	for el := range e.Nodes {
@@ -117,7 +134,7 @@ func (e Enterprises) FindByOID(oid interface{}) (Node, bool) {
 	if exists, idx := e.oidExists(oid); exists {
 		return e.Nodes[idx], exists
 	}
-	return Node{}, false
+	return emptyNode, false
 }
 
 /*
@@ -134,7 +151,7 @@ func (e Enterprises) FindByIRI(iri string) (Node, bool) {
 			return n, true
 		}
 	}
-	return Node{}, false
+	return emptyNode, false
 }
 
 /*
@@ -158,7 +175,7 @@ func (e Enterprises) FindByEmail(email string) (Node, bool) {
 			}
 		}
 	}
-	return Node{}, false
+	return emptyNode, false
 }
 
 /*
@@ -175,7 +192,7 @@ func (e Enterprises) FindByContact(name string) (Node, bool) {
 			return e.Nodes[i], true
 		}
 	}
-	return Node{}, false
+	return emptyNode, false
 }
 
 func (e *Enterprises) setLastUpdated(lu line) bool {
@@ -188,8 +205,9 @@ func (e *Enterprises) setLastUpdated(lu line) bool {
 		return false
 	}
 
-	e.LastUpdated = lus[len(lus)-1]
-	return true
+	var err error
+	e.LastUpdated, err = time.Parse(penDateFormat, lus[len(lus)-1])
+	return err == nil
 }
 
 func (e *Enterprises) setSection(sec line) bool {
@@ -231,12 +249,19 @@ func (e *Enterprises) setURI(uri line) bool {
 
 	var err error
 	f := strings.Split(uri.string(), ` `)
-	e.URI, err = url.Parse(f[len(f)-1])
+	e.SourceURI, err = url.Parse(f[len(f)-1])
 	if err != nil {
 		return false
 	}
 
 	return true
+}
+
+func (e *Enterprises) URI() string {
+	if e.SourceURI != nil {
+		return e.SourceURI.String()
+	}
+	return ``
 }
 
 /*
@@ -248,30 +273,31 @@ func (e Enterprises) Count() int {
 }
 
 /*
-DumpHeader is a stringer method for the Enterprises receiver
-instance header-information.
+Header returns a map[string]map[string]interface{} containing key
+pieces of information about the data parsed.
 */
-func (e Enterprises) DumpHeader() (head string) {
-	head += fmt.Sprintf("\n%s\n\n", ul(e.Section+`:`))
-
-	head += fmt.Sprintf("Parse Info:\n")
-
-	if e.URI != nil {
-		head += fmt.Sprintf("  URI: %s\n", e.URI.String())
+func (e Enterprises) Header() map[string]map[string]interface{} {
+	return map[string]map[string]interface{}{
+		`Parser`: map[string]interface{}{
+			`Title`: e.Title,
+			`Source`: e.URI(),
+			`Section`: e.Section,
+			`Entries`: e.Count(),
+			`Duration`: fmt.Sprintf("%d ms. (~%d sec.)",
+				e.ParseTime/time.Millisecond,
+				e.ParseTime/time.Second,
+			),
+			`LastUpdated`: e.LastUpdated.Format(dateFormat),
+		},
+		`Prefix`: map[string]interface{}{
+			`OID`: enterpriseOID,
+			`IRI`: enterpriseIRI,
+			`ASN`: strings.Replace(enterpriseASN1, ` <--X-->`, ``, 1),
+		},
 	}
-
-	head += fmt.Sprintf("  Entries: %d\n", e.Count())
-	head += fmt.Sprintf("  Duration: %d sec.\n", e.ParseTime/time.Second)
-	head += fmt.Sprintf("  Last Updated: %s\n\n", e.LastUpdated)
-
-	head += fmt.Sprintf("Prefix Info:\n")
-	head += fmt.Sprintf("  OID: %s\n", enterpriseOID)
-	head += fmt.Sprintf("  IRI: %s\n", enterpriseIRI)
-	head += fmt.Sprintf("  ASN: %s\n", strings.Replace(enterpriseASN1, ` <--X-->`, ``, 1))
-
-	return
 }
 
+// todo - make this moar better
 func (e *Enterprises) setHeader(l line, ct int) (bool, error) {
 
 	switch ct - 1 {

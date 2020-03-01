@@ -68,45 +68,39 @@ the receiver node. An optional boolean value of true will
 cause indented email address output (helpful for multi-
 valued entries).
 */
-func (n Node) Emails(split ...bool) (e string) {
+func (n Node) Emails() (e string) {
 	if len(n.Email) > 0 {
-		if len(split) == 0 {
-			split = []bool{false}
-		}
-		if split[0] {
-			for i := 0; i < len(n.Email); i++ {
-				e += fmt.Sprintf("  - %s\n", n.Email[i])
-			}
-		} else {
-			e += fmt.Sprintf("%s\n", strings.Join(n.Email, `,`))
-		}
+		e = fmt.Sprintf("%s", strings.Join(n.Email, `,`))
 	}
 	return
 }
 
 /*
-DumpNode is a stringer method for the receiver instance of
-Node.
+Node returns a map[string]string containing key pieces of information
+regarding the receiver Node instance.
 */
-func (n Node) DumpNode() (entry string) {
-	entry += fmt.Sprintf("\n## %s (%d)\n", n.Organization, n.Decimal)
-	entry += fmt.Sprintf("  Contact: %s\n", n.Contact)
-
-	entry += fmt.Sprintf("  OID: %s\n", n.OID())
-	entry += fmt.Sprintf("  IRI: %s\n", n.IRI())
-	entry += fmt.Sprintf("  ASN: %s\n", n.ASN())
-
-	entry += "  Email:\n" + n.Emails(true)
-
-	return
+func (n Node) Node() map[string]string {
+	return map[string]string{
+		`Organization`: n.Organization,
+		`Contact`: n.Contact,
+		`Decimal`: fmt.Sprint(n.Decimal),
+		`Emails`: n.Emails(),
+		`OID`: n.OID(),
+		`IRI`: n.IRI(),
+		`ASN`: n.ASN(),
+	}
 }
 
 func parseNode(scan *bufio.Scanner, l line) (n Node, err error) {
 	n.Decimal, err = strconv.Atoi(l.string())
 	if err != nil {
-		return Node{}, err
+		return emptyNode, err
 	}
 
+	// we make an assumption here that each node entry is
+	// no more and no less than four (4) lines. This has
+	// always been the case for this file, so its fair to
+	// operate as such ...
 	for i := 1; i < 4; i++ {
 		if scan.Scan() {
 			next := line(scan.Text()).trimLeadingSpace()
