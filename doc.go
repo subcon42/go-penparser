@@ -4,12 +4,22 @@ Numbers (PEN) file by path/filename.
 
 Credits
 
-Jesse Coretta (2/29/20)
+Jesse Coretta (subcon42)
 
 Advisory
 
 You must download the PEN file yourself using your preferred HTTP
-client.  The New() method takes the path of that downloaded file.
+client.  The New() method takes the local filesystem path of that
+downloaded file (e.g: /tmp/pen.txt).
+
+The URL for the PEN file is below (don't click this URL unless you
+really mean it, as the file is literally hundreds of thousands of
+lines long):
+
+http://www.iana.org/assignments/enterprise-numbers/enterprise-numbers
+
+DO NOT MANUALLY EDIT THIS DOWNLOADED FILE, OR YOU WILL SUFFER MANY
+BIZARRE PROBLEMS.
 
 Keep in mind, this is a very rough and unofficial draft; subject
 to change without notice!
@@ -26,7 +36,7 @@ Basic usage is described as follows:
 
         // Create our *Enterprises object based on
         // data parsed via file
-        ents, err := New(file)
+        ents, err := pen.New(file)
         if err != nil {
                 fmt.Println(err)
                 return
