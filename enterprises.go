@@ -37,14 +37,14 @@ type Enterprises struct {
 }
 
 /*
-Append will attempt to append unique instance of Node (n)
+append will attempt to append unique instance of Node (n)
 to the receiver instance of *Enterprises' Nodes field.
 
 Non-unique instances of Node (so declared by a matching OID)
-will be silently discarded if an Append is attempted.
+will be silently discarded if an append is attempted.
 */
-func (e *Enterprises) Append(n Node) bool {
-	if exists, _ := e.OIDExists(n.Decimal); exists {
+func (e *Enterprises) append(n Node) bool {
+	if exists, _ := e.oidExists(n.Decimal); exists {
 		return false
 	}
 	e.Nodes = append(e.Nodes, n)
@@ -52,7 +52,7 @@ func (e *Enterprises) Append(n Node) bool {
 }
 
 /*
-OIDExists returns a boolean value indicative of whether the
+oidExists returns a boolean value indicative of whether the
 provided node decimal or OID sequence exists within a given
 node within the Enterprises receiver object.
 
@@ -71,17 +71,17 @@ receiver instance of Enterprises.
 
 If a match is found, the second t
 */
-func (e Enterprises) OIDExists(dec interface{}) (bool, int) {
+func (e Enterprises) oidExists(dec interface{}) (bool, int) {
 	for el := range e.Nodes {
 		switch tv := dec.(type) {
 		case asn1.ObjectIdentifier:
-			return e.OIDExists([]int(tv))
+			return e.oidExists([]int(tv))
 		case string:
 			if x, err := strconv.Atoi(tv); err == nil {
-				return e.OIDExists(x)
+				return e.oidExists(x)
 			}
 			if x := strings.Split(tv, `.`); len(x) >= 1 {
-				return e.OIDExists(x[len(x)-1])
+				return e.oidExists(x[len(x)-1])
 			}
 		case int:
 			if tv < 0 {
@@ -102,7 +102,7 @@ func (e Enterprises) OIDExists(dec interface{}) (bool, int) {
 			if asn1.ObjectIdentifier(tv[:len(tv)-1]).String() != enterpriseOID {
 				return false, -1
 			}
-			return e.OIDExists(tv[len(tv)-1])
+			return e.oidExists(tv[len(tv)-1])
 		}
 	}
 	return false, -1
@@ -112,12 +112,9 @@ func (e Enterprises) OIDExists(dec interface{}) (bool, int) {
 FindByOID will conduct a bonafide ASN.1 ObjectIdentifier match between
 the provided value and each parsed value found within the Enterprises
 receiver instance.
-
-This is a convenience wrapper method for Enterprises.OIDExists(oid) in
-that automatic index deferrence is executed.
 */
 func (e Enterprises) FindByOID(oid interface{}) (Node, bool) {
-	if exists, idx := e.OIDExists(oid); exists {
+	if exists, idx := e.oidExists(oid); exists {
 		return e.Nodes[idx], exists
 	}
 	return Node{}, false
@@ -181,12 +178,12 @@ func (e Enterprises) FindByContact(name string) (Node, bool) {
 	return Node{}, false
 }
 
-func (e *Enterprises) setLastUpdated(lu Line) bool {
-	if lu.Len() <= 1 {
+func (e *Enterprises) setLastUpdated(lu line) bool {
+	if lu.len() <= 1 {
 		return false
 	}
 
-	lus := strings.Split(lu.String()[1:lu.Len()-1], ` `)
+	lus := strings.Split(lu.string()[1:lu.len()-1], ` `)
 	if len(lus) == 0 {
 		return false
 	}
@@ -195,23 +192,23 @@ func (e *Enterprises) setLastUpdated(lu Line) bool {
 	return true
 }
 
-func (e *Enterprises) setSection(sec Line) bool {
-	if sec.Len() <= 1 {
+func (e *Enterprises) setSection(sec line) bool {
+	if sec.len() <= 1 {
 		return false
 	}
 
-	e.Section = sec.String()[0 : sec.Len()-1]
+	e.Section = sec.string()[0 : sec.len()-1]
 	return true
 }
 
-func (e *Enterprises) setPrefix(pfx Line) bool {
-	if pfx.Len() <= 7 {
+func (e *Enterprises) setPrefix(pfx line) bool {
+	if pfx.len() <= 7 {
 		return false
 	}
 
-	npfx := Line(pfx[8:pfx.Len()])
+	npfx := line(pfx[8:pfx.len()])
 
-	pfxs := strings.Split(npfx.String(), ` `)
+	pfxs := strings.Split(npfx.string(), ` `)
 	if len(pfxs) >= 2 {
 		if len(pfxs[0])|len(pfxs[1]) <= 2 {
 			return false
@@ -227,13 +224,13 @@ func (e *Enterprises) setPrefix(pfx Line) bool {
 	return false
 }
 
-func (e *Enterprises) setURI(uri Line) bool {
-	if uri.Len() <= 1 {
+func (e *Enterprises) setURI(uri line) bool {
+	if uri.len() <= 1 {
 		return false
 	}
 
 	var err error
-	f := strings.Split(uri.String(), ` `)
+	f := strings.Split(uri.string(), ` `)
 	e.URI, err = url.Parse(f[len(f)-1])
 	if err != nil {
 		return false
@@ -275,11 +272,11 @@ func (e Enterprises) DumpHeader() (head string) {
 	return
 }
 
-func (e *Enterprises) setHeader(l Line, ct int) (bool, error) {
+func (e *Enterprises) setHeader(l line, ct int) (bool, error) {
 
 	switch ct - 1 {
 	case 1:
-		e.Title = l.String() // no special processing needed
+		e.Title = l.string() // no special processing needed
 	case 3:
 		if ok := e.setLastUpdated(l); !ok {
 			return false, errors.New("Unable to set LastUpdated header value")
@@ -326,8 +323,8 @@ func New(file string) (ents *Enterprises, err error) {
 	ct := 0
 	for scan.Scan() {
 		ct++
-		L := Line(scan.Text())
-		if L.IsZero() {
+		L := line(scan.Text())
+		if L.isZero() {
 			continue
 		}
 
@@ -340,9 +337,9 @@ func New(file string) (ents *Enterprises, err error) {
 
 		// Any line that is wholly numerical indicates
 		// the start of a new entry ...
-		if L.IsNumbersOnly() {
+		if L.isNumbersOnly() {
 			if n, err := parseNode(scan, L); err == nil {
-				_ = ents.Append(n) // duplicates silently ignored ...
+				_ = ents.append(n) // duplicates silently ignored ...
 			} else {
 				return nil, err
 			}

@@ -101,22 +101,22 @@ func (n Node) DumpNode() (entry string) {
 	return
 }
 
-func parseNode(scan *bufio.Scanner, l Line) (n Node, err error) {
-	n.Decimal, err = strconv.Atoi(l.String())
+func parseNode(scan *bufio.Scanner, l line) (n Node, err error) {
+	n.Decimal, err = strconv.Atoi(l.string())
 	if err != nil {
 		return Node{}, err
 	}
 
 	for i := 1; i < 4; i++ {
 		if scan.Scan() {
-			next := Line(scan.Text()).TrimLeadingSpace()
+			next := line(scan.Text()).trimLeadingSpace()
 			switch i {
 			case 1:
-				n.Organization = next.String()
+				n.Organization = next.string()
 			case 2:
-				n.Contact = next.String()
+				n.Contact = next.string()
 			case 3:
-				em := strings.Split(strings.ReplaceAll(next.String(), ` `, ``), `,`)
+				em := strings.Split(strings.ReplaceAll(next.string(), ` `, ``), `,`)
 				n.Email = make([]string, 0, len(em))
 				for el := range em {
 					n.Email = append(n.Email, em[el])
