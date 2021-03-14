@@ -17,4 +17,4 @@ of the Private Enterprise Numbers SMI branch parsed (1.3.6.1.4.1).
 
 # Credit
 
-Jesse Coretta (`subcon42`)
+Jesse Coretta
